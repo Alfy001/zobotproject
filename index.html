@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vanilla Boutique</title>
+  <meta name="description" content="A minimal e-commerce frontend." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    
+  <meta property="og:title" content="Vanilla Boutique" />
+  <meta property="og:description" content="A minimal e-commerce frontend." />
+  <meta property="og:type" content="website" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.$zoho=window.$zoho || {};
+      $zoho.salesiq=$zoho.salesiq||{ready:function(){}};
+      $zoho.salesiq.ready=function(){
+        $zoho.salesiq.floatwindow.visible("show");
+        $zoho.salesiq.floatbutton.color("#e85c3a");
+        $zoho.salesiq.chatwindow.titlebar.color("#e85c3a");
+      }
+    </script>
+    <script id="zsiqscript" src="https://salesiq.zohopublic.com/widget?wc=siqb72874fe3592aec0bc6aa87dd039616da9e73d3c97a96c600e8fb7a5dbf45376" defer></script>
+    <style>
+      /* Zoho SalesIQ widget custom styling to match site theme */
+      .zsiq_floatmain {
+        --zsiq-primary: #e85c3a !important;
+      }
+      .zsiq_theme1 .zsiq_cnt, 
+      .zsiq_theme1 .zsiq_flt_rel {
+        background: linear-gradient(135deg, #e85c3a 0%, #e84a5f 100%) !important;
+      }
+      .zsiq_theme1 .zsiq_cnt .siq_bR {
+        background: #e85c3a !important;
+      }
+    </style>
+  </body>
+</html>
