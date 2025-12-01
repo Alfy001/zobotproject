@@ -1,105 +1,145 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Star, Minus, Plus, Heart, ShoppingBag, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
-import { getProductById } from "@/data/products";
-import { useCart } from "@/context/CartContext";
-import { toast } from "@/hooks/use-toast";
+
+type Product = {
+  product_id: number | string;
+  name?: string;
+  description?: string;
+  price?: number | string;
+  image_url?: string | null;
+  [k: string]: any;
+};
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const product = getProductById(id || "");
-  const { addItem, openCart } = useCart();
-  const [selectedSize, setSelectedSize] = useState("");
-  const [selectedColor, setSelectedColor] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [email, setEmail] = useState("");
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  if (!product) {
-    return <Layout><div className="container mx-auto px-4 py-16 text-center"><h1 className="text-2xl">Product not found</h1><Link to="/products" className="text-primary underline mt-4 inline-block">Back to products</Link></div></Layout>;
-  }
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const response = await fetch("/server/fetch_products/products", { mode: "cors" });
+        if (!response.ok) {
+          throw new Error("Failed to fetch product details");
+        }
+        const data = await response.json();
+        if (!data || !Array.isArray(data.products)) {
+          throw new Error("Unexpected product data");
+        }
+        // normalize comparison as strings
+        const found = data.products.find((p: Product) => String(p.product_id) === String(id));
+        setProduct(found || null);
+      } catch (err) {
+        console.error("Failed to load product:", err);
+        setProduct(null);
+      }
+    };
 
-  const formatPrice = (price: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(price);
+    fetchProduct();
+  }, [id]);
 
-  const handleAddToCart = () => {
-    if (!selectedSize || !selectedColor) {
-      toast({ title: "Please select size and color", variant: "destructive" });
+  const handlePlaceOrder = async () => {
+    if (!email) {
+      alert("Please enter your email to place the order.");
       return;
     }
-    addItem(product, quantity, selectedSize, selectedColor);
-    toast({ title: "Added to bag!", description: `${product.name} has been added.` });
-    openCart();
+    if (!product) {
+      alert("Product not loaded. Please try again.");
+      return;
+    }
+
+    setIsPlacingOrder(true);
+
+    // build payload matching server expectation
+    const payload = {
+      product_id: Number(product.product_id),
+      total: Number(product.price ?? 0),
+      email: String(email).trim().toLowerCase(),
+    };
+
+    try {
+      const response = await fetch("/server/buy_product/product_ordered", {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // always read body so we can show server message
+      const text = await response.text().catch(() => null);
+      let json: any = null;
+      try { json = text ? JSON.parse(text) : null; } catch (e) { /* not json */ }
+
+      if (!response.ok) {
+        // prefer server-provided message if any
+        const msg = (json && (json.error || json.message)) || text || `Server returned ${response.status}`;
+        console.error("Order placement failed:", response.status, msg);
+        alert("Failed to place order: " + msg);
+        return;
+      }
+
+      // Success response (server returns order info)
+      alert("Order placed successfully. Thank you!");
+    } catch (err: any) {
+      console.error("Order placement failed:", err);
+      alert("Failed to place order. Please try again.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
+
+  if (!product) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="text-2xl">Loading product details...</h1>
+        </div>
+      </Layout>
+    );
+  }
+
+  const displayPrice = (() => {
+    const p = Number(product.price ?? 0);
+    try {
+      return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(p);
+    } catch {
+      return `₹${p}`;
+    }
+  })();
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-16">
-          <div className="aspect-[3/4] rounded-2xl overflow-hidden">
-            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground uppercase tracking-wider mb-2">{product.brand}</p>
-            <h1 className="font-display text-3xl md:text-4xl font-bold mb-4">{product.name}</h1>
-            <div className="flex items-center gap-2 mb-4">
-              <Star className="w-5 h-5 fill-accent text-accent" />
-              <span className="font-medium">{product.rating}</span>
-              <span className="text-muted-foreground">({product.reviews} reviews)</span>
-            </div>
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-3xl font-bold">{formatPrice(product.price)}</span>
-              {product.originalPrice && (
-                <>
-                  <span className="text-xl text-muted-foreground line-through">{formatPrice(product.originalPrice)}</span>
-                  <span className="text-destructive font-semibold">{product.discount}% OFF</span>
-                </>
-              )}
-            </div>
-            <p className="text-muted-foreground mb-6">{product.description}</p>
-            
-            {/* Size Selection */}
-            <div className="mb-6">
-              <h3 className="font-semibold mb-3">Size</h3>
-              <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <button key={size} onClick={() => setSelectedSize(size)} className={`px-4 py-2 border rounded-lg transition-colors ${selectedSize === size ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}>
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div className="flex flex-col items-center">
+          {product.image_url ? (
+            <img src={product.image_url} alt={product.name} className="w-64 h-64 object-cover mb-4" />
+          ) : (
+            <div className="w-64 h-64 bg-gray-100 mb-4 flex items-center justify-center">No image</div>
+          )}
 
-            {/* Color Selection */}
-            <div className="mb-6">
-              <h3 className="font-semibold mb-3">Color</h3>
-              <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <button key={color} onClick={() => setSelectedColor(color)} className={`px-4 py-2 border rounded-lg transition-colors flex items-center gap-2 ${selectedColor === color ? "border-primary bg-primary/10" : "border-border hover:border-primary"}`}>
-                    {selectedColor === color && <Check className="w-4 h-4 text-primary" />}
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
+          <p className="text-gray-700 mb-4">{product.description}</p>
+          <p className="text-lg font-semibold mb-4">{displayPrice}</p>
 
-            {/* Quantity */}
-            <div className="mb-8">
-              <h3 className="font-semibold mb-3">Quantity</h3>
-              <div className="inline-flex items-center border border-border rounded-lg">
-                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 hover:bg-muted transition-colors"><Minus className="w-4 h-4" /></button>
-                <span className="w-12 text-center font-medium">{quantity}</span>
-                <button onClick={() => setQuantity(quantity + 1)} className="p-3 hover:bg-muted transition-colors"><Plus className="w-4 h-4" /></button>
-              </div>
-            </div>
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="border p-2 rounded mb-4 w-full max-w-md"
+          />
 
-            {/* Actions */}
-            <div className="flex gap-4">
-              <button onClick={handleAddToCart} className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-colors">
-                <ShoppingBag className="w-5 h-5" />
-                Add to Bag
-              </button>
-              <button className="p-4 border border-border rounded-lg hover:bg-muted transition-colors"><Heart className="w-5 h-5" /></button>
-            </div>
-          </div>
+          <button
+            onClick={handlePlaceOrder}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            disabled={isPlacingOrder}
+          >
+            {isPlacingOrder ? "Placing Order..." : "Place Order"}
+          </button>
         </div>
       </div>
     </Layout>
