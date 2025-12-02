@@ -2,42 +2,35 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 
-type Product = {
-  product_id: number | string;
-  name?: string;
-  description?: string;
-  price?: number | string;
-  image_url?: string | null;
-  [k: string]: any;
-};
-
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProducts = async () => {
       try {
-        const response = await fetch("/server/fetch_products/products", { mode: "cors" });
+        const response = await fetch(
+          "https://textile-907473852.development.catalystserverless.com/server/fetch_products/products"
+        ); // Reverted to direct API URL
         if (!response.ok) {
-          throw new Error("Failed to fetch product details");
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        if (!data || !Array.isArray(data.products)) {
-          throw new Error("Unexpected product data");
-        }
-        // normalize comparison as strings
-        const found = data.products.find((p: Product) => String(p.product_id) === String(id));
-        setProduct(found || null);
+        const productDetails = data.products.find((p: any) => String(p.product_id) === String(id));
+        setProduct(productDetails || null);
       } catch (err) {
-        console.error("Failed to load product:", err);
-        setProduct(null);
+        console.error("Fetch error:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchProduct();
+    fetchProducts();
   }, [id]);
 
   const handlePlaceOrder = async () => {
@@ -92,15 +85,9 @@ const ProductDetail = () => {
     }
   };
 
-  if (!product) {
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="text-2xl">Loading product details...</h1>
-        </div>
-      </Layout>
-    );
-  }
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!product) return <div>Product not found</div>;
 
   const displayPrice = (() => {
     const p = Number(product.price ?? 0);
