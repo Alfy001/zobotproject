@@ -4,7 +4,7 @@ import Layout from "@/components/layout/Layout";
 import ProductGrid from "@/components/products/ProductGrid";
 import ProductFilters from "@/components/products/ProductFilters";
 import { getNewArrivals, getTrendingProducts } from "@/data/products";
-
+//s
 const Products = () => {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
