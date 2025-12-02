@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/server/:path*",
+      "destination": "https://textile-907473852.development.catalystserverless.com/server/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
