@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
 import ProductGrid from "@/components/products/ProductGrid";
 import ProductFilters from "@/components/products/ProductFilters";
-import { products, getNewArrivals, getTrendingProducts } from "@/data/products";
-
+import { getNewArrivals, getTrendingProducts } from "@/data/products";
+//s
 const Products = () => {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
@@ -17,6 +17,24 @@ const Products = () => {
     season: [] as string[],
   });
   const [sortBy, setSortBy] = useState("popularity");
+  const [products, setProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("/server/fetch_products/products");
+        if (!response.ok) {
+          throw new Error("Failed to fetch products");
+        }
+        const data = await response.json();
+        setProducts(data.products || []);
+      } catch (error) {
+        console.error("Failed to load products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -73,7 +91,7 @@ const Products = () => {
     }
 
     return result;
-  }, [filters, sortBy, searchQuery, filterType]);
+  }, [filters, sortBy, searchQuery, filterType, products]);
 
   const pageTitle = filterType === "new" ? "New Arrivals" : filterType === "trending" ? "Trending Now" : searchQuery ? `Search: "${searchQuery}"` : "All Products";
 
