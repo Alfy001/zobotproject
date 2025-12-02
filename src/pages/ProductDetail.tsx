@@ -53,14 +53,17 @@ const ProductDetail = () => {
     };
 
     try {
-      const response = await fetch("/server/buy_product/product_ordered", {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "/server/buy_product/product_ordered",
+        {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       // always read body so we can show server message
       const text = await response.text().catch(() => null);
